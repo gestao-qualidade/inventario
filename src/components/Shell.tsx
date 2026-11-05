@@ -8,6 +8,7 @@ import Icon from './Icon';
 
 const MENU: { href: string; rotulo: string; icone: string; perfis: string[] }[] = [
   { href: '/inventarios', rotulo: 'Inventários', icone: 'inventario', perfis: ['ADMINISTRADOR', 'GESTOR', 'SUPERVISOR', 'AUDITOR'] },
+  { href: '/divergencias', rotulo: 'Divergências', icone: 'auditoria', perfis: ['ADMINISTRADOR', 'GESTOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
   { href: '/mapa', rotulo: 'Mapa 3D', icone: 'mapa', perfis: ['ADMINISTRADOR', 'GESTOR'] },
   { href: '/contagem', rotulo: 'Contagem', icone: 'contagem', perfis: ['OPERADOR'] },
   { href: '/check', rotulo: 'Check de posição', icone: 'check', perfis: ['OPERADOR', 'SUPERVISOR'] },
@@ -43,6 +44,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <nav className="space-y-1 px-3 pb-4">
             {itens.map(i => <Link key={i.href} href={i.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${path.startsWith(i.href) ? 'bg-gradient-to-r from-blue-500/40 to-cyan-400/20 text-white ring-1 ring-white/15' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}><Icon nome={i.icone} className="h-5 w-5 opacity-90" />{i.rotulo}</Link>)}
           </nav>
+          {user.perfil !== 'OPERADOR' && <div className="px-3 pb-2"><button className="w-full rounded-xl bg-white/10 px-3 py-2 text-left text-xs font-semibold text-cyan-200 hover:bg-white/20" onClick={() => window.dispatchEvent(new Event('inv:atualizar'))}>↻ Atualizar dados da tela</button>
+            <div className="mt-1 px-1 text-[10px] text-slate-400">As telas guardam o que já carregaram. Clique aqui para buscar de novo.</div></div>}
           <div className="mt-2 border-t border-white/10 px-5 py-4 text-sm">
             <div className="font-semibold text-white">{user.nome}</div><div className="text-xs text-slate-400">{user.perfil}</div>
             <button className="mt-3 text-xs underline" onClick={sair}>Sair</button>

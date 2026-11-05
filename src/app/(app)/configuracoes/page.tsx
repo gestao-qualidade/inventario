@@ -39,6 +39,7 @@ export default function Configuracoes() {
       <div className="card grid gap-3 md:grid-cols-3"><h2 className="font-bold md:col-span-3">Operação</h2>
         <div><label className="label">Reserva de tarefa (minutos)</label><input className="input" type="number" min={5} value={v.RESERVA_MINUTOS || ''} onChange={e => setV({ ...v, RESERVA_MINUTOS: e.target.value })} /></div>
         <div><label className="label">Versões de base mantidas</label><input className="input" type="number" min={2} value={v.VERSOES_MANTIDAS || ''} onChange={e => setV({ ...v, VERSOES_MANTIDAS: e.target.value })} /></div>
+        <div><label className="label">Divergência com valor a partir de (R$) exige aprovação do Gestor — 0 desliga</label><input className="input" type="number" min={0} step="1" value={v.APROVACAO_VALOR_MIN ?? '0'} onChange={e => setV({ ...v, APROVACAO_VALOR_MIN: e.target.value })} /></div>
         <div><label className="label">Limite de rejeição por arquivo (%)</label><input className="input" type="number" min={0} step="0.1" value={v.REJEICAO_MAX_PERCENT ?? '1'} onChange={e => setV({ ...v, REJEICAO_MAX_PERCENT: e.target.value })} /></div></div>
       <div className="card space-y-3"><h2 className="font-bold">Mensagens do aplicativo</h2>
         {Object.keys(m).map(k => <div key={k}><label className="label">{k}</label><input className="input" value={m[k]} onChange={e => setM({ ...m, [k]: e.target.value })} /></div>)}</div>

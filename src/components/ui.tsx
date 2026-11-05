@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { limparCache } from '@/lib/rpc';
 
 export type Usuario = { id: string; nome: string; login: string; perfil: string; trocarSenha: boolean; extras: string[] };
 export const UserCtx = createContext<Usuario | null>(null);
@@ -52,10 +53,12 @@ export function useCarregar<T>(fn: () => Promise<T>, deps: unknown[] = [], inter
     const run = () => fn().then(d => { if (vivo) { setDados(d); setErro(''); } }).catch(e => { if (vivo) setErro(e.message); }).finally(() => vivo && setCarregando(false));
     run();
     const t = intervaloMs ? setInterval(run, intervaloMs) : null;
-    return () => { vivo = false; if (t) clearInterval(t); };
+    const aoAtualizar = () => { limparCache(); run(); };
+    window.addEventListener('inv:atualizar', aoAtualizar);
+    return () => { vivo = false; if (t) clearInterval(t); window.removeEventListener('inv:atualizar', aoAtualizar); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, n]);
-  return { dados, erro, carregando, recarregar: () => setN(x => x + 1), setDados };
+  return { dados, erro, carregando, recarregar: () => { limparCache(); setN(x => x + 1); }, setDados };
 }
 
 export const fmt = (n: number | string) => Number(n).toLocaleString('pt-BR');

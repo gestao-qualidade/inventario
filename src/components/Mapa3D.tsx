@@ -12,7 +12,7 @@ const CORES = ['#b5834a', '#2f6bff', '#22a35a', '#f5c400', '#e63946', '#cbd5e1']
 const PAPELAO = ['#b5834a', '#a8763f', '#c2925c', '#9c6f3a'];
 const COL_SPACING = 1.35, LEVEL_HEIGHT = 1.9, RACK_DEPTH = 1.15, AISLE_WIDTH = 3.4, CORRIDOR_GAP = 2.6;
 const BASE_Y = 0.15, BEAM = 0.08, POST = 0.12, PALLET_H = 0.16, COLUMN_TAG_STEP = 5;
-const LIMITE = 7000; // máximo de posições desenhadas de uma vez (mantém o 3D leve)
+const LIMITE = 15000; // máximo de posições desenhadas de uma vez (mantém o 3D leve)
 
 type P = { id: string; gal: string; st: number; rua: string; col: number; alt: number };
 type Pick = { tipo: 'pos'; p: P } | { tipo: 'area'; rua: string; total: number; st: number };
@@ -45,7 +45,10 @@ export default function Mapa3D() {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<{ reset?: () => void; topo?: () => void; ir?: (id: string) => void }>({});
 
-  const itens = useMemo(() => (dados?.posicoes || []).map(([id, g, st]) => parse(id, dados!.galpoes[g] ?? '', st)), [dados]);
+  const itens = useMemo(() => {
+    const nomes: string[] = Array.isArray(dados?.galpoes) ? dados!.galpoes : [];
+    return (Array.isArray(dados?.posicoes) ? dados!.posicoes : []).map(([id, g, st]: any) => parse(String(id), typeof g === 'number' ? (nomes[g] ?? '') : String(g ?? ''), Number(st) || 0));
+  }, [dados]);
   const galpoes = useMemo(() => [...new Set(itens.filter(i => i.st !== 5).map(i => i.gal))].sort(cmpNat), [itens]);
   useEffect(() => { if (galpoes.length && !galpoes.includes(galpao)) setGalpao(galpoes[0]); }, [galpoes, galpao]);
   useEffect(() => { setOculto(inv ? new Set([5]) : new Set()); }, [inv]);
@@ -78,7 +81,9 @@ export default function Mapa3D() {
   useEffect(() => {
     const el = host.current; if (!el || !doGalpao.length) return;
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf2f1ec);
-    const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); r.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); el.appendChild(r.domElement);
+    let r: THREE.WebGLRenderer;
+    try { r = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); } catch { setAviso('Seu navegador não conseguiu iniciar o 3D (WebGL desativado). Ative a aceleração de hardware ou use outro navegador.'); return; }
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); el.appendChild(r.domElement);
     const cam = new THREE.PerspectiveCamera(55, 1, 0.1, 5000);
     scene.add(new THREE.AmbientLight(0xffffff, 1.0));
     const sol = new THREE.DirectionalLight(0xffffff, 0.9); scene.add(sol);
@@ -203,7 +208,7 @@ export default function Mapa3D() {
 
   // limite de segurança: se a seleção for grande demais, avisa e corta
   useEffect(() => {
-    if (visao === 'estante') { const n = doGalpao.filter(p => sel.includes(p.rua) && p.col >= lo && p.col <= hi && (!alts.size || alts.has(p.alt)) && !oculto.has(p.st)).length; setAviso(n > LIMITE ? `Muitas posições (${fmt(n)}). Para ficar rápido, mostrando só as ${fmt(LIMITE)} primeiras — escolha menos ruas ou use o filtro de colunas.` : ''); }
+    if (visao === 'estante') { const n = doGalpao.filter(p => sel.includes(p.rua) && p.col >= lo && p.col <= hi && (!alts.size || alts.has(p.alt)) && !oculto.has(p.st)).length; setAviso(n > LIMITE ? `Muitas posições (${fmt(n)}). Para o 3D não travar, estou mostrando só as ${fmt(LIMITE)} primeiras — escolha menos ruas ou use os filtros de coluna e nível.` : ''); }
     else setAviso('');
   }, [doGalpao, sel, lo, hi, alts, oculto, visao]);
 
@@ -219,14 +224,15 @@ export default function Mapa3D() {
 
   if (carregando) return <Carregando texto="Carregando o mapa…" />;
   if (erro || !dados) return <Alerta>{erro}</Alerta>;
-  const c = dados.contagem;
+  const c = dados.contagem || { nao: 0, andamento: 0, ok: 0, divergente: 0, pendente: 0 };
+  const cob = dados.cobertura || { total: 0, inventariadas: 0, percentual: 0 };
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-        <Kpi rotulo="Cobertura (posições únicas)" valor={`${dados.cobertura.percentual}%`} sub={`${fmt(dados.cobertura.inventariadas)} de ${fmt(dados.cobertura.total)}`} />
+        <Kpi rotulo="Cobertura (posições únicas)" valor={`${cob.percentual}%`} sub={`${fmt(cob.inventariadas)} de ${fmt(cob.total)}`} />
         {[0, 1, 2, 3, 4].map(i => <Kpi key={i} rotulo={NOMES[i]} valor={fmt([c.nao, c.andamento, c.ok, c.divergente, c.pendente][i])} cor="" />)}
       </div>
-      <Barra pct={dados.cobertura.percentual} />
+      <Barra pct={cob.percentual} />
       <div className="card !p-3">
         <div className="mb-3">
           <div className="mb-1 text-[11px] font-bold uppercase text-slate-500">Colorir por inventário</div>
@@ -257,8 +263,8 @@ export default function Mapa3D() {
         {aviso && <div className="mb-2"><Alerta tipo="aviso">{aviso}</Alerta></div>}
         <div className="grid gap-3 lg:grid-cols-[270px_1fr]">
           <div className="rounded-2xl border border-slate-200 bg-white/60 p-2">
-            <div className="mb-2 flex items-center justify-between"><div className="text-sm font-bold">Ruas de {galpao} <span className="font-normal text-slate-500">({ruas.length})</span></div>
-              <div className="flex gap-2 text-xs font-semibold text-blue-700"><button onClick={() => setSel(ruasVis.slice(0, 6).map(r => r.rua))}>6 primeiras</button><button onClick={() => setSel([])}>limpar</button></div></div>
+            <div className="mb-2"><div className="text-sm font-bold">Ruas de {galpao} <span className="font-normal text-slate-500">({ruas.length} · {sel.length} marcadas)</span></div>
+              <div className="mt-1 flex flex-wrap gap-1.5 text-xs font-bold"><button className="rounded-lg bg-blue-600 px-2.5 py-1 text-white" onClick={() => setSel(ruasVis.map(r => r.rua))}>Selecionar todas{filtroRua.trim() ? ' (filtradas)' : ''}</button><button className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-700" onClick={() => setSel(ruasVis.slice(0, 6).map(r => r.rua))}>6 primeiras</button><button className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-700" onClick={() => setSel([])}>Limpar</button></div></div>
             <input className="input !py-1.5 mb-2" placeholder="Filtrar rua…" value={filtroRua} onChange={e => setFiltroRua(e.target.value)} />
             <div className="max-h-[56vh] space-y-1 overflow-y-auto pr-1">
               {ruasVis.map(r => { const on = sel.includes(r.rua); return (
