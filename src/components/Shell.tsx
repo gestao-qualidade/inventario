@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { rpc, msgErro } from '@/lib/rpc';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { rpc, msgErro, aquecer } from '@/lib/rpc';
 import { Alerta, Carregando, Modal, UserCtx, Usuario } from './ui';
 import Icon from './Icon';
 
@@ -10,8 +10,7 @@ const MENU: { href: string; rotulo: string; icone: string; perfis: string[] }[] 
   { href: '/inventarios', rotulo: 'Inventários', icone: 'inventario', perfis: ['ADMINISTRADOR', 'GESTOR', 'SUPERVISOR', 'AUDITOR'] },
   { href: '/divergencias', rotulo: 'Divergências', icone: 'auditoria', perfis: ['ADMINISTRADOR', 'GESTOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
   { href: '/mapa', rotulo: 'Mapa 3D', icone: 'mapa', perfis: ['ADMINISTRADOR', 'GESTOR'] },
-  { href: '/contagem', rotulo: 'Contagem', icone: 'contagem', perfis: ['OPERADOR'] },
-  { href: '/check', rotulo: 'Check de posição', icone: 'check', perfis: ['OPERADOR', 'SUPERVISOR'] },
+  { href: '/check', rotulo: 'Check de posição', icone: 'check', perfis: ['SUPERVISOR'] },
   { href: '/importacao', rotulo: 'Atualização das bases', icone: 'upload', perfis: ['ADMINISTRADOR', 'ANALISTA'] },
   { href: '/regras', rotulo: 'Regras', icone: 'regras', perfis: ['ADMINISTRADOR', 'GESTOR', 'AUDITOR', 'ANALISTA'] },
   { href: '/usuarios', rotulo: 'Usuários', icone: 'usuarios', perfis: ['ADMINISTRADOR'] },
@@ -19,13 +18,28 @@ const MENU: { href: string; rotulo: string; icone: string; perfis: string[] }[] 
   { href: '/auditoria', rotulo: 'Auditoria', icone: 'auditoria', perfis: ['ADMINISTRADOR', 'AUDITOR'] }
 ];
 const INICIO: Record<string, string> = { OPERADOR: '/contagem', ANALISTA: '/importacao' };
+type Pend = Record<string, { pendentes: number; inventarios: { id: string; nome: string; pendentes?: number; modo?: string }[] }>;
+const TIPOS_OP: [string, string, string, string][] = [
+  ['GERAL', 'Inventário geral', '/contagem/geral', 'contagem'], ['CICLICO', 'Inventário cíclico', '/contagem/ciclico', 'contagem'],
+  ['ESPECIAL', 'Inventário especial', '/contagem/especial', 'contagem'], ['CHECK', 'Check de posição', '/check', 'check']];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Usuario | null>(null);
   const [aberto, setAberto] = useState(false);
   const path = usePathname(); const router = useRouter();
+  const [pend, setPend] = useState<Pend | null>(null); const [aviso, setAviso] = useState(''); const total = useRef<number | null>(null);
+  const op = user?.perfil === 'OPERADOR';
+  const buscarPend = useCallback(() => {
+    rpc<{ tipos: Pend }>('contagem.pendencias').then(r => {
+      const t = Object.values(r.tipos).reduce((a, x) => a + x.pendentes, 0);
+      if (total.current !== null && t > total.current) { setAviso('Novo inventário/pendência disponível para você.'); setTimeout(() => setAviso(''), 6000); }
+      total.current = t; setPend(r.tipos);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => { if (!op || user?.trocarSenha) return; buscarPend(); const t = setInterval(buscarPend, 45000); return () => clearInterval(t); }, [op, user?.trocarSenha, buscarPend]);
+  useEffect(() => { if (op) buscarPend(); }, [path, op, buscarPend]);
 
-  useEffect(() => { rpc<Usuario>('sessao.eu').then(setUser).catch(() => router.replace('/login')); }, [router]);
+  useEffect(() => { rpc<Usuario>('sessao.eu').then(u => { setUser(u); if (!u.trocarSenha) aquecer(u.perfil); }).catch(() => router.replace('/login')); }, [router]);
   useEffect(() => { if (user && path === '/') router.replace(INICIO[user.perfil] || '/inventarios'); }, [user, path, router]);
   useEffect(() => setAberto(false), [path]);
 
@@ -42,6 +56,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <aside className={`${aberto ? 'block' : 'hidden'} w-full shrink-0 bg-gradient-to-b from-slate-950 via-indigo-950 to-blue-900 text-slate-200 lg:sticky lg:top-0 lg:block lg:h-screen lg:w-64 lg:overflow-auto`}>
           <div className="hidden items-center gap-3 px-5 py-6 lg:flex"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-500/30"><Icon nome="inventario" /></div><div><div className="text-base font-extrabold leading-tight text-white">Inventário</div><div className="text-[11px] font-semibold uppercase tracking-widest text-cyan-300">Logístico</div></div></div>
           <nav className="space-y-1 px-3 pb-4">
+            {op && <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">Meus inventários</div>}
+            {op && TIPOS_OP.filter(([k]) => pend?.[k]).map(([k, nome, href, ic]) => { const x = pend![k]; const ativo = path.startsWith(href);
+              return <Link key={k} href={href} className={`block rounded-xl px-3 py-2.5 transition ${ativo ? 'bg-gradient-to-r from-blue-500/40 to-cyan-400/20 text-white ring-1 ring-white/15' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}>
+                <div className="flex items-center gap-3 text-sm font-semibold"><Icon nome={ic} className="h-5 w-5 opacity-90" /><span className="flex-1">{nome}</span>
+                  {x.pendentes > 0 && <span className="min-w-[1.5rem] rounded-full bg-red-500 px-2 py-0.5 text-center text-xs font-extrabold text-white shadow shadow-red-900/40">{x.pendentes}</span>}</div>
+                <div className="ml-8 mt-0.5 truncate text-[11px] text-cyan-200/80">{x.inventarios.map(i => i.nome).join(' · ')}</div></Link>; })}
+            {op && pend && !Object.keys(pend).length && <div className="mx-3 rounded-xl bg-white/5 px-3 py-3 text-xs text-slate-300">Nenhum inventário ativo para você agora. Esta lista atualiza sozinha.</div>}
             {itens.map(i => <Link key={i.href} href={i.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${path.startsWith(i.href) ? 'bg-gradient-to-r from-blue-500/40 to-cyan-400/20 text-white ring-1 ring-white/15' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}><Icon nome={i.icone} className="h-5 w-5 opacity-90" />{i.rotulo}</Link>)}
           </nav>
           {user.perfil !== 'OPERADOR' && <div className="px-3 pb-2"><button className="w-full rounded-xl bg-white/10 px-3 py-2 text-left text-xs font-semibold text-cyan-200 hover:bg-white/20" onClick={() => window.dispatchEvent(new Event('inv:atualizar'))}>↻ Atualizar dados da tela</button>
@@ -51,7 +72,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <button className="mt-3 text-xs underline" onClick={sair}>Sair</button>
           </div>
         </aside>
-        <main className="min-w-0 flex-1 p-4 lg:p-8">{user.trocarSenha ? <TrocarSenha onOk={() => setUser({ ...user, trocarSenha: false })} /> : children}</main>
+        <main className="min-w-0 flex-1 p-4 lg:p-8">{aviso && <div className="fixed right-4 top-4 z-50 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-xl" onClick={() => setAviso('')}>🔔 {aviso}</div>}{user.trocarSenha ? <TrocarSenha onOk={() => setUser({ ...user, trocarSenha: false })} /> : children}</main>
       </div>
     </UserCtx.Provider>
   );
