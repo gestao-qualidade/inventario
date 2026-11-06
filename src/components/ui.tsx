@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { limparCache } from '@/lib/rpc';
 
-export type Usuario = { id: string; nome: string; login: string; perfil: string; trocarSenha: boolean; extras: string[] };
+export type Usuario = { id: string; nome: string; login: string; perfil: string; trocarSenha: boolean; extras: string[]; tiposInv?: string[] };
 export const UserCtx = createContext<Usuario | null>(null);
 export const useUser = () => useContext(UserCtx)!;
 

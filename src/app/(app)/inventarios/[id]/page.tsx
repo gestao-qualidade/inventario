@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { rpc, msgErro } from '@/lib/rpc';
 import ProdutoFoto from '@/components/ProdutoFoto';
+import Lotes from '@/components/Lotes';
 import { Alerta, Barra, Carregando, Kpi, Modal, Titulo, fmt, useCarregar, useUser } from '@/components/ui';
 
 const CORES = ['#2563eb', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6'];
@@ -23,7 +24,7 @@ function Tratativas({ invId, podeResolver }: { invId: string; podeResolver: bool
     <div className="card !p-0">
       <h3 className="px-5 pt-4 text-sm font-bold text-slate-700">Divergências e tratativas</h3>
       {carregando ? <Carregando /> : <div className="overflow-x-auto"><table className="w-full"><thead><tr><th className="th">Posição</th><th className="th">Cliente</th><th className="th">SKU</th><th className="th text-right">Sistema</th><th className="th text-right">Final</th><th className="th">Tipo</th><th className="th">Etapa</th><th className="th">Ação da matriz</th><th className="th">Status</th><th className="th" /></tr></thead><tbody>
-        {dados!.map(d => <tr key={d.ID}><td className="td">{d.POSICAO}</td><td className="td">{d.CLIENTE}</td><td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={d.SKU} className="h-9 w-9" />{d.SKU}</div></td><td className="td text-right">{fmt(d.SALDO)}</td><td className="td text-right">{fmt(d.QTD_FINAL)}</td>
+        {dados!.map(d => <tr key={d.ID}><td className="td">{d.POSICAO}</td><td className="td">{d.CLIENTE}</td><td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={d.SKU} className="h-9 w-9" /><div><div>{d.SKU}</div><div className="text-xs text-slate-500">{d.DESCRICAO}</div><Lotes lotes={d.LOTES} vazio={false} /></div></div></td><td className="td text-right">{fmt(d.SALDO)}</td><td className="td text-right">{fmt(d.QTD_FINAL)}</td>
           <td className="td"><span className={`badge ${d.TIPO === 'FALTA' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>{d.TIPO}</span></td><td className="td">{d.ETAPA_FINAL || 'check'}</td><td className="td text-xs">{d.ACAO}</td><td className="td text-xs">{d.STATUS}</td>
           <td className="td text-right"><a className="text-xs font-semibold text-brand-600 underline" href={`/divergencias?inv=${invId}`}>Abrir na tela de Divergências</a></td></tr>)}
         {!dados!.length && <tr><td className="td text-slate-500" colSpan={10}>Nenhuma divergência registrada.</td></tr>}

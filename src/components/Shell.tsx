@@ -30,11 +30,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [pend, setPend] = useState<Pend | null>(null); const [aviso, setAviso] = useState(''); const total = useRef<number | null>(null);
   const op = user?.perfil === 'OPERADOR';
   const buscarPend = useCallback(() => {
-    rpc<{ tipos: Pend }>('contagem.pendencias').then(r => {
-      const t = Object.values(r.tipos).reduce((a, x) => a + x.pendentes, 0);
+    const atualizar = (tipos: Pend) => {
+      const t = Object.values(tipos).reduce((a, x) => a + x.pendentes, 0);
       if (total.current !== null && t > total.current) { setAviso('Novo inventário/pendência disponível para você.'); setTimeout(() => setAviso(''), 6000); }
-      total.current = t; setPend(r.tipos);
-    }).catch(() => {});
+      total.current = t; setPend(tipos);
+    };
+    rpc<{ tipos: Pend }>('contagem.pendencias').then(r => atualizar(r.tipos)).catch(async () => {
+      // Apps Script antigo (sem a ação nova): monta a lista pelas ações que já existiam
+      try {
+        const [a, c] = await Promise.all([rpc<any[]>('contagem.inventarios'), rpc<any[]>('check.inventarios')]);
+        const t: Pend = {};
+        a.forEach(i => { const x = t[i.tipo] || (t[i.tipo] = { pendentes: 0, inventarios: [] }); x.inventarios.push({ id: i.id, nome: i.nome }); });
+        if (c.length) t.CHECK = { pendentes: c.length, inventarios: c.map(i => ({ id: i.id, nome: i.nome })) };
+        atualizar(t);
+      } catch { setPend(p => p || {}); }
+    });
   }, []);
   useEffect(() => { if (!op || user?.trocarSenha) return; buscarPend(); const t = setInterval(buscarPend, 45000); return () => clearInterval(t); }, [op, user?.trocarSenha, buscarPend]);
   useEffect(() => { if (op) buscarPend(); }, [path, op, buscarPend]);
@@ -57,12 +67,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="hidden items-center gap-3 px-5 py-6 lg:flex"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-500/30"><Icon nome="inventario" /></div><div><div className="text-base font-extrabold leading-tight text-white">Inventário</div><div className="text-[11px] font-semibold uppercase tracking-widest text-cyan-300">Logístico</div></div></div>
           <nav className="space-y-1 px-3 pb-4">
             {op && <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">Meus inventários</div>}
-            {op && TIPOS_OP.filter(([k]) => pend?.[k]).map(([k, nome, href, ic]) => { const x = pend![k]; const ativo = path.startsWith(href);
+            {op && TIPOS_OP.filter(([k]) => !user.tiposInv?.length || user.tiposInv.includes(k)).map(([k, nome, href, ic]) => { const x = pend?.[k] || { pendentes: 0, inventarios: [] }; const ativo = path.startsWith(href);
               return <Link key={k} href={href} className={`block rounded-xl px-3 py-2.5 transition ${ativo ? 'bg-gradient-to-r from-blue-500/40 to-cyan-400/20 text-white ring-1 ring-white/15' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}>
                 <div className="flex items-center gap-3 text-sm font-semibold"><Icon nome={ic} className="h-5 w-5 opacity-90" /><span className="flex-1">{nome}</span>
                   {x.pendentes > 0 && <span className="min-w-[1.5rem] rounded-full bg-red-500 px-2 py-0.5 text-center text-xs font-extrabold text-white shadow shadow-red-900/40">{x.pendentes}</span>}</div>
-                <div className="ml-8 mt-0.5 truncate text-[11px] text-cyan-200/80">{x.inventarios.map(i => i.nome).join(' · ')}</div></Link>; })}
-            {op && pend && !Object.keys(pend).length && <div className="mx-3 rounded-xl bg-white/5 px-3 py-3 text-xs text-slate-300">Nenhum inventário ativo para você agora. Esta lista atualiza sozinha.</div>}
+                <div className="ml-8 mt-0.5 truncate text-[11px] text-cyan-200/80">{x.inventarios.length ? x.inventarios.map(i => i.nome).join(' · ') : pend ? 'Nenhum inventário ativo' : 'Carregando…'}</div></Link>; })}
             {itens.map(i => <Link key={i.href} href={i.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${path.startsWith(i.href) ? 'bg-gradient-to-r from-blue-500/40 to-cyan-400/20 text-white ring-1 ring-white/15' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}><Icon nome={i.icone} className="h-5 w-5 opacity-90" />{i.rotulo}</Link>)}
           </nav>
           {user.perfil !== 'OPERADOR' && <div className="px-3 pb-2"><button className="w-full rounded-xl bg-white/10 px-3 py-2 text-left text-xs font-semibold text-cyan-200 hover:bg-white/20" onClick={() => window.dispatchEvent(new Event('inv:atualizar'))}>↻ Atualizar dados da tela</button>

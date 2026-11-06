@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Barra, Carregando, Kpi, Modal, fmt, useCarregar } from './ui';
 import ProdutoFoto from './ProdutoFoto';
+import Lotes from './Lotes';
 
 type Dados = { versao: string; galpoes: string[]; posicoes: [string, number, number][]; contagem: Record<string, number>; cobertura: { total: number; inventariadas: number; percentual: number } };
 const NOMES = ['Não inventariada', 'Em andamento', 'Concluída sem divergência', 'Concluída com divergência', 'Pendente de tratativa', 'Fora deste inventário'];
@@ -290,7 +291,7 @@ export default function Mapa3D() {
                 <div className="overflow-x-auto"><table className="w-full"><thead><tr><th className="th">Produto</th><th className="th">Inventário</th><th className="th text-right">Saldo</th><th className="th">Lote / validade</th><th className="th">Status</th></tr></thead><tbody>
                   {detalhe.itens.map((i: any, n: number) => <tr key={n}><td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={i.sku} className="h-10 w-10" /><div><div className="font-semibold">{i.sku}</div><div className="text-xs text-slate-500">{i.descricao}</div></div></div></td>
                     <td className="td text-xs">{i.inventario}</td><td className="td text-right font-semibold">{fmt(i.saldo)}</td>
-                    <td className="td text-xs">{i.lotes?.length ? i.lotes.map((l: any) => `${l.lote || 's/ lote'}${l.validade ? ' · ' + l.validade : ''}`).join(' | ') : '—'}</td><td className="td text-xs">{i.status}</td></tr>)}</tbody></table></div>}</div>
+                    <td className="td text-xs"><Lotes lotes={i.lotes} /></td><td className="td text-xs">{i.status}</td></tr>)}</tbody></table></div>}</div>
             {detalhe.divergencias?.length > 0 && <div><h3 className="mb-2 text-sm font-bold">Divergências</h3><ul className="space-y-1 text-sm">{detalhe.divergencias.map((d: any, n: number) => <li key={n} className="rounded-lg bg-red-50 px-3 py-2"><b>{d.sku}</b> — {d.tipo}: sistema {fmt(d.saldo)}, final {fmt(d.final)} · {d.status}<div className="text-xs text-slate-600">{d.acao}</div></li>)}</ul></div>}
             <div><h3 className="mb-2 text-sm font-bold">Histórico de contagens</h3>
               {!detalhe.historico?.length ? <p className="text-sm text-slate-500">Nenhuma contagem registrada.</p> :

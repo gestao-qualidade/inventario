@@ -116,12 +116,12 @@ export default function NovoInventario({ onClose, onCriado }: { onClose: () => v
             <div className="grid gap-3 md:grid-cols-2">
               <div><input className="input" placeholder="Buscar código… (mín. 2 letras)" value={busca} onChange={e => setBusca(e.target.value)} />
                 {resultados.length > 0 && <div className="mt-2 space-y-1">{resultados.map(i => <button type="button" key={i} className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-2 text-left hover:border-blue-300 hover:bg-blue-50"
-                  onClick={() => { setSkus(s => new Set(s).add(i)); setBusca(''); }}><ProdutoFoto sku={c.dims.skus[i]} className="h-10 w-10" /><span className="text-sm font-semibold">{c.dims.skus[i]}</span><span className="ml-auto text-xs text-slate-500">{fmt(calc.skusDisp.get(i) || 0)} un.</span></button>)}</div>}</div>
+                  onClick={() => { setSkus(s => new Set(s).add(i)); setBusca(''); }}><ProdutoFoto sku={c.dims.skus[i]} className="h-10 w-10" ampliar={false} /><span className="text-sm font-semibold">{c.dims.skus[i]}</span><span className="ml-auto text-xs text-slate-500">{fmt(calc.skusDisp.get(i) || 0)} un.</span></button>)}</div>}</div>
               <div><textarea className="input" rows={3} placeholder="Ou cole vários códigos (um por linha, ou separados por vírgula/espaço)" value={codigos} onChange={e => setCodigos(e.target.value)} />
                 {colados.faltam.length > 0 && <div className="mt-1 text-xs font-semibold text-red-600">Não existem na base: {colados.faltam.slice(0, 6).join(', ')}{colados.faltam.length > 6 ? ` e mais ${colados.faltam.length - 6}` : ''}</div>}</div>
             </div>
             {todosSkus.size > 0 && <div className="mt-3 flex flex-wrap gap-2">{[...todosSkus].slice(0, 12).map(i => <span key={i} className="chip chip-on !pl-1">
-              <ProdutoFoto sku={c.dims.skus[i]} className="h-6 w-6" />{c.dims.skus[i]}{skus.has(i) && <button type="button" onClick={() => setSkus(s => { const n = new Set(s); n.delete(i); return n; })} aria-label="Remover">✕</button>}</span>)}
+              <ProdutoFoto sku={c.dims.skus[i]} className="h-6 w-6" ampliar={false} />{c.dims.skus[i]}{skus.has(i) && <button type="button" onClick={() => setSkus(s => { const n = new Set(s); n.delete(i); return n; })} aria-label="Remover">✕</button>}</span>)}
               {todosSkus.size > 12 && <span className="text-xs text-slate-500">+{todosSkus.size - 12} códigos</span>}</div>}
           </div>
 

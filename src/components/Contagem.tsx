@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Carregando, Modal, Titulo, fmt, useCarregar } from './ui';
 import ProdutoFoto from './ProdutoFoto';
+import Lotes from './Lotes';
 
 type Pos = { posicao: string; unidades: number; minha: boolean };
 type Tarefa = { tarefaId: string; posicao: string; pendentes: number };
@@ -51,7 +52,7 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
             <div className="min-w-0 space-y-1 text-sm">
               <div className="text-lg font-extrabold leading-tight">{prod.sku}</div><div className="text-slate-700">{prod.descricao || 'Produto sem cadastro na base'}</div>
               {prod.cliente && <div className="text-xs text-slate-500">Cliente {prod.cliente}{prod.codigoBarras ? ` · cód. ${prod.codigoBarras}` : ''}</div>}
-              {prod.lotes?.length > 0 && <div className="text-xs"><span className="font-bold text-slate-600">Lote / validade:</span> {prod.lotes.map((l: any, i: number) => <span key={i} className="mr-2 inline-block rounded-md bg-white px-1.5 py-0.5 font-semibold ring-1 ring-slate-200">{l.lote || 's/ lote'}{l.validade ? ` · ${l.validade}` : ''}</span>)}</div>}
+              <Lotes lotes={prod.lotes} grande />
               {!prod.pertence && <div className="font-bold text-amber-800">Produto não cadastrado nesta posição. Inclusão identificada.</div>}
             </div>
           </div>
@@ -102,7 +103,7 @@ export default function Contagem({ tipo }: { tipo?: string }) {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <Titulo>{tipo ? NOME_TIPO[tipo] || 'Contagem' : 'Contagem'}</Titulo>
-      {!invs.dados?.length ? <Alerta tipo="info">Nenhum inventário ativo deste tipo para você no momento.</Alerta> : (
+      {!invs.dados?.length ? <Alerta tipo="info">{tipo ? 'Nenhum inventário ativo deste tipo para você no momento.' : 'Nenhum inventário ativo disponível para você no momento. Use os tipos no menu ao lado.'}</Alerta> : (
         <div><label className="label">Inventário</label><select className="input" value={invId} onChange={e => setInvId(e.target.value)}><option value="">Selecione…</option>{invs.dados.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}</select></div>
       )}
       {retomar && <div className="card flex items-center justify-between border-brand-500"><div><div className="font-bold">Você tem uma posição em andamento: {retomar.posicao}</div></div>

@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Carregando, Kpi, Modal, Titulo, fmt, useCarregar, useUser } from '@/components/ui';
 import ProdutoFoto from '@/components/ProdutoFoto';
+import Lotes from '@/components/Lotes';
 
-type Item = { id: string; origem: 'DIVERGENCIA' | 'INCLUSAO'; invId: string; inventario: string; cliente: string; sku: string; posicao: string; rua: string; tipo: string; saldo: number | ''; final: number | '';
+type Item = { descricao?: string; lotes?: { lote: string; validade: string }[]; id: string; origem: 'DIVERGENCIA' | 'INCLUSAO'; invId: string; inventario: string; cliente: string; sku: string; posicao: string; rua: string; tipo: string; saldo: number | ''; final: number | '';
   diferenca: number | ''; valor: number | ''; status: string; acao: string; decisao: string; responsavel: string; prazo: string; criadoEm: string; decididoEm: string };
 type Lista = { itens: Item[]; decisoes: { id: string; rotulo: string }[]; aprovacaoMin: number };
 
@@ -79,7 +80,7 @@ export default function Divergencias() {
             <tr key={i.origem + i.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setAberto(i)}>
               <td className="td"><span className={`badge ${STATUS[i.status]?.cor || ''}`}>{STATUS[i.status]?.rotulo || i.status}</span></td>
               <td className="td font-semibold">{TIPO[i.tipo] || i.tipo}</td>
-              <td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={i.sku} className="h-9 w-9" /><div><div className="font-semibold">{i.sku}</div><div className="text-xs text-slate-500">{i.cliente} · {i.inventario}</div></div></div></td>
+              <td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={i.sku} className="h-9 w-9" /><div><div className="font-semibold">{i.sku}</div><div className="text-xs text-slate-500">{i.descricao ? i.descricao + ' · ' : ''}{i.cliente} · {i.inventario}</div><div className="mt-1"><Lotes lotes={i.lotes} vazio={false} /></div></div></div></td>
               <td className="td">{i.posicao}</td><td className="td text-right">{i.saldo === '' ? '—' : fmt(i.saldo)}</td><td className="td text-right">{i.final === '' ? '—' : fmt(i.final)}</td>
               <td className={`td text-right font-bold ${typeof i.diferenca === 'number' && i.diferenca < 0 ? 'text-red-600' : 'text-amber-600'}`}>{i.diferenca === '' ? '—' : (i.diferenca > 0 ? '+' : '') + fmt(i.diferenca)}</td>
               <td className="td text-right">{brl(i.valor)}</td><td className="td max-w-[14rem] text-xs text-slate-600">{i.acao || '—'}</td>
@@ -118,7 +119,7 @@ function Detalhe({ item, lista, perfil, nome, onClose, onMudou }: { item: Item; 
             <div className="mt-1 text-lg font-extrabold">{d.sku} <span className="text-sm font-semibold text-slate-500">· {d.cliente}</span></div>
             <div className="text-sm text-slate-600">{d.produto?.descricao}</div>
             <div className="mt-1 text-sm">Posição <b>{d.posicao}</b>{d.produto?.galpao ? ` · ${d.produto.galpao}` : ''}{d.produto?.curva ? ` · curva ${d.produto.curva}` : ''}{d.produto?.familia ? ` · ${d.produto.familia}` : ''}</div>
-            {d.produto?.lotes?.length > 0 && <div className="text-xs text-slate-500">Lote/validade: {d.produto.lotes.map((l: any) => `${l.lote || 's/ lote'}${l.validade ? ' · ' + l.validade : ''}`).join(' | ')}</div>}
+            <div className="mt-1"><Lotes lotes={d.produto?.lotes} grande /></div>
           </div>
           {d.origem === 'DIVERGENCIA' ? (
             <div className="grid grid-cols-4 gap-3 text-center">

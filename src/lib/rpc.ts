@@ -5,7 +5,7 @@ export class ErroApp extends Error { codigo: string; constructor(m: string, c: s
 // Só vale para telas de consulta (nunca para a contagem do operador). Qualquer gravação limpa tudo.
 const LEITURAS = new Set(['inventario.listar', 'inventario.dashboard', 'inventario.catalogo', 'mapa.dados', 'mapa.posicao', 'importacao.estado', 'importacao.historico', 'importacao.opcoesBase',
   'regras.listar', 'regras.historico', 'usuarios.listar', 'usuarios.operadores', 'config.obter', 'mensagens.listar', 'auditoria.listar', 'tratativas.listar', 'inclusoes.listar', 'check.inventarios']);
-const SEM_CACHE = new Set(['contagem.pendencias', 'sessao.eu']);
+const SEM_CACHE = new Set(['contagem.pendencias', 'contagem.posicoes', 'check.posicoes', 'sessao.eu']);
 const TTL_MS = 15 * 60 * 1000;
 const guardado = new Map<string, { t: number; p: Promise<any> }>();
 const PREF = 'inv_rpc:';
