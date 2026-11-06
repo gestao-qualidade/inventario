@@ -1,5 +1,8 @@
 'use client';
 
+/** Máscara de digitação DD/MM/AAAA (aceita só números). */
+export const mascaraData = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); return d.length > 4 ? `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}` : d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };
+
 export type LoteVal = { lote?: string; validade?: string };
 
 /** Validade DD/MM/AAAA → dias até vencer (negativo = vencido). null se não for data. */

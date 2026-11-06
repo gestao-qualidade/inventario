@@ -3,14 +3,14 @@ import { useEffect, useState } from 'react';
 import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Carregando, Titulo, fmt, useCarregar } from '@/components/ui';
 import ProdutoFoto from '@/components/ProdutoFoto';
-import Lotes from '@/components/Lotes';
+import Lotes, { mascaraData } from '@/components/Lotes';
 
 type Item = { sku: string; descricao: string; cliente: string; codigoBarras: string; lotes?: { lote: string; validade: string }[]; encontrado: boolean; qtd: string };
 
 export default function Check() {
   const invs = useCarregar<{ id: string; nome: string; modo: string }[]>(() => rpc('check.inventarios'), []);
   const [invId, setInvId] = useState(''); const [posicao, setPosicao] = useState(''); const [itens, setItens] = useState<Item[] | null>(null);
-  const [incl, setIncl] = useState<{ sku: string; qtd: string }[]>([]); const [erro, setErro] = useState(''); const [ok, setOk] = useState(''); const [env, setEnv] = useState(false);
+  const [incl, setIncl] = useState<{ sku: string; qtd: string; lote: string; validade: string }[]>([]); const [erro, setErro] = useState(''); const [ok, setOk] = useState(''); const [env, setEnv] = useState(false);
   const [modo, setModo] = useState('CONTAGEM'); const presenca = modo === 'PRESENCA';
   const [alvo, setAlvo] = useState(''); const [filtro, setFiltro] = useState('');
   const lista = useCarregar<{ posicoes: { posicao: string; itens: number }[]; pendentes: number; total: number; feitas: number }>(
@@ -65,8 +65,10 @@ export default function Check() {
               <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5" checked={it.encontrado} onChange={e => setItens(itens.map((x, j) => j === n ? { ...x, encontrado: e.target.checked } : x))} />Encontrado</label></div>
               {it.encontrado && !presenca && <input className="input" inputMode="numeric" placeholder="Quantidade física" value={it.qtd} onChange={e => setItens(itens.map((x, j) => j === n ? { ...x, qtd: e.target.value.replace(/\D/g, '') } : x))} />}</div>
           ))}
-          <div className="card space-y-2"><div className="flex items-center justify-between"><h3 className="font-bold">Produtos que não pertencem à posição</h3><button className="btn btn-secondary" onClick={() => setIncl([...incl, { sku: '', qtd: '' }])}>+ Adicionar</button></div>
-            {incl.map((x, n) => <div key={n} className="flex items-center gap-2">{x.sku.trim().length >= 4 && <ProdutoFoto key={x.sku} sku={x.sku} className="h-12 w-12" />}<input className="input" placeholder="SKU" value={x.sku} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, sku: e.target.value } : y))} />{!presenca && <input className="input max-w-[8rem]" inputMode="numeric" placeholder="Qtd" value={x.qtd} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, qtd: e.target.value.replace(/\D/g, '') } : y))} />}<button className="text-red-600" onClick={() => setIncl(incl.filter((_, j) => j !== n))}>✕</button></div>)}</div>
+          <div className="card space-y-2"><div className="flex items-center justify-between"><h3 className="font-bold">Produtos que não pertencem à posição</h3><button className="btn btn-secondary" onClick={() => setIncl([...incl, { sku: '', qtd: '', lote: '', validade: '' }])}>+ Adicionar</button></div>
+            {incl.map((x, n) => <div key={n} className="space-y-2 rounded-xl border border-slate-200 p-2"><div className="flex items-center gap-2">{x.sku.trim().length >= 4 && <ProdutoFoto key={x.sku} sku={x.sku} className="h-12 w-12" />}<input className="input min-w-0 flex-1" placeholder="SKU" value={x.sku} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, sku: e.target.value } : y))} />{!presenca && <input className="input max-w-[8rem]" inputMode="numeric" placeholder="Qtd" value={x.qtd} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, qtd: e.target.value.replace(/\D/g, '') } : y))} />}<button className="text-red-600" onClick={() => setIncl(incl.filter((_, j) => j !== n))}>✕</button></div>
+              <div className="grid grid-cols-2 gap-2"><input className="input w-full" placeholder="Lote" value={x.lote} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, lote: e.target.value } : y))} />
+              <input className="input w-full" inputMode="numeric" placeholder="Validade DD/MM/AAAA" value={x.validade} onChange={e => setIncl(incl.map((y, j) => j === n ? { ...y, validade: mascaraData(e.target.value) } : y))} /></div></div>)}</div>
           {erro && <Alerta>{erro}</Alerta>}
           <div className="grid grid-cols-2 gap-3"><button className="btn btn-secondary btn-lg" onClick={() => setItens(null)}>Cancelar</button><button className="btn btn-primary btn-lg" disabled={env || (!presenca && itens.some(i => i.encontrado && i.qtd === ''))} onClick={registrar}>{env ? 'Gravando…' : 'Registrar check'}</button></div>
         </div>

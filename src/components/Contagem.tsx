@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Carregando, Modal, Titulo, fmt, useCarregar } from './ui';
 import ProdutoFoto from './ProdutoFoto';
-import Lotes from './Lotes';
+import Lotes, { mascaraData } from './Lotes';
 
 type Pos = { posicao: string; unidades: number; minha: boolean };
 type Tarefa = { tarefaId: string; posicao: string; pendentes: number };
@@ -12,7 +12,7 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
   const [sku, setSku] = useState(''); const [qtd, setQtd] = useState(''); const [ocupado, setOcupado] = useState(false);
   const [res, setRes] = useState<any>(null); const [erro, setErro] = useState(''); const [restantes, setRestantes] = useState(tarefa.pendentes);
   const [confZero, setConfZero] = useState<number | null>(null);
-  const [prod, setProd] = useState<any>(null);
+  const [prod, setProd] = useState<any>(null); const [lote, setLote] = useState(''); const [validade, setValidade] = useState('');
   const skuRef = useRef<HTMLInputElement>(null); const qtdRef = useRef<HTMLInputElement>(null);
   useEffect(() => { skuRef.current?.focus(); }, []);
 
@@ -26,8 +26,8 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
     if (!sku.trim() || qtd === '') { setErro('Bipe o SKU e informe a quantidade.'); return; }
     setErro(''); setRes(null); setOcupado(true);
     try {
-      const r = await rpc<any>('contagem.lancar', { tarefaId: tarefa.tarefaId, sku, qtd });
-      setRes(r); setRestantes(r.restantes); setSku(''); setQtd(''); setProd(null);
+      const r = await rpc<any>('contagem.lancar', { tarefaId: tarefa.tarefaId, sku, qtd, lote, validade });
+      setRes(r); setRestantes(r.restantes); setSku(''); setQtd(''); setProd(null); setLote(''); setValidade('');
     } catch (e) { setErro(msgErro(e)); } finally { setOcupado(false); setTimeout(() => skuRef.current?.focus(), 50); }
   };
   const concluir = async (confirmar = false) => {
@@ -57,6 +57,10 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
             </div>
           </div>
         )}
+        {prod && !prod.pertence && <div className="grid grid-cols-2 gap-3 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200">
+          <div className="col-span-2 text-xs font-bold text-amber-800">Inclusão: informe o lote e a validade do produto encontrado (se tiver)</div>
+          <div><label className="label" htmlFor="lote">Lote</label><input id="lote" className="input" value={lote} onChange={e => setLote(e.target.value)} autoComplete="off" /></div>
+          <div><label className="label" htmlFor="validade">Validade</label><input id="validade" className="input" inputMode="numeric" placeholder="DD/MM/AAAA" value={validade} onChange={e => setValidade(mascaraData(e.target.value))} autoComplete="off" /></div></div>}
         <div><label className="label" htmlFor="qtd">Quantidade física</label>
           <input id="qtd" ref={qtdRef} className="input !py-4 !text-xl" value={qtd} onChange={e => setQtd(e.target.value.replace(/\D/g, ''))} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), lancar())} inputMode="numeric" autoComplete="off" /></div>
         <button className="btn btn-primary btn-lg w-full" disabled={ocupado} onClick={lancar}>{ocupado ? 'Gravando…' : 'Confirmar lançamento'}</button>
