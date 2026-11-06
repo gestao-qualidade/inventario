@@ -4,7 +4,7 @@ import { rpc, msgErro } from '@/lib/rpc';
 import { Alerta, Barra, Carregando, Titulo, fmt, useCarregar, useUser } from '@/components/ui';
 import type { Resultado, Tipo } from '@/lib/excelProcess';
 
-type Arq = { nome: string; status: string; linhasLidas: number; validos: number; rejeitados: number; ignoradas?: number; agregadas?: number; duplicados?: number; posicoes?: number; skus?: number;
+type Arq = { comLote?: number; nome: string; status: string; linhasLidas: number; validos: number; rejeitados: number; ignoradas?: number; agregadas?: number; duplicados?: number; posicoes?: number; skus?: number;
   camposVazios?: Record<string, number>; motivos?: string[]; erros: { linha: number; motivo: string; chave: string }[]; finalizadoEm?: string };
 type Estado = { versaoAtiva: string; esperados: { tipo: Tipo; titulo: string; arquivo: string; aba: string; layout: string[] }[];
   aberta: null | { id: string; versao: string; status: string; resumo: { arquivos: Record<string, Arq>; previa?: any } }; historico: any[] };
@@ -75,6 +75,7 @@ function Cartao({ tipo, est, onMudou }: { tipo: Tipo; est: Estado; onMudou: () =
           {arq.agregadas ? <><dt className="text-slate-500">Linhas somadas (lotes)</dt><dd className="text-right font-medium">{fmt(arq.agregadas)}</dd></> : null}
           {arq.ignoradas ? <><dt className="text-slate-500">Linhas ignoradas (totais)</dt><dd className="text-right font-medium">{fmt(arq.ignoradas)}</dd></> : null}
           {arq.posicoes ? <><dt className="text-slate-500">Posições</dt><dd className="text-right font-medium">{fmt(arq.posicoes)}</dd></> : null}
+          {arq.comLote !== undefined ? <><dt className={arq.comLote ? 'text-slate-500' : 'font-bold text-red-600'}>Linhas com lote/validade</dt><dd className={`text-right font-medium ${arq.comLote ? '' : 'font-bold text-red-600'}`}>{fmt(arq.comLote)}{arq.comLote ? '' : ' — nenhum lote lido!'}</dd></> : null}
           {arq.skus ? <><dt className="text-slate-500">SKUs</dt><dd className="text-right font-medium">{fmt(arq.skus)}</dd></> : null}
           <dt className="text-slate-500">Duplicados</dt><dd className="text-right font-medium">{fmt(arq.duplicados || 0)}</dd>
           {arq.camposVazios && Object.entries(arq.camposVazios).map(([k, v]) => <><dt key={k} className="text-slate-500">Vazio: {k}</dt><dd key={k + 'v'} className="text-right font-medium">{fmt(v)}</dd></>)}
