@@ -50,7 +50,7 @@ export default function Inventarios() {
               <td className="td whitespace-nowrap text-right space-x-3">
                 {pode && i.status === 'AGENDADO' && <><button className="text-xs font-semibold text-emerald-700 underline" disabled={ocupado === i.id} onClick={() => iniciar(i)}>Iniciar agora</button><button className="text-xs font-semibold text-brand-600 underline" onClick={() => abrirEdicao(i)}>Reagendar</button><button className="text-xs font-semibold text-amber-700 underline" onClick={() => cancelar(i)}>Cancelar</button></>}
                 {pode && i.status === 'ATIVO' && <><button className="text-xs font-semibold text-brand-600 underline" onClick={() => abrirEdicao(i)}>Prazo</button><button className="text-xs font-semibold text-amber-700 underline" onClick={() => encerrar(i)}>Encerrar</button></>}
-                {pode && (adm || !['ATIVO', 'ENCERRADO'].includes(i.status)) && <button className="text-xs font-semibold text-red-600 underline" disabled={ocupado === i.id} onClick={() => excluir(i)}>Excluir</button>}
+                {adm && <button className="text-xs font-semibold text-red-600 underline" disabled={ocupado === i.id} onClick={() => excluir(i)}>Excluir</button>}
               </td></tr>
           ))}
           {!vis.length && <tr><td className="td text-slate-500" colSpan={9}>Nenhum inventário aqui.</td></tr>}

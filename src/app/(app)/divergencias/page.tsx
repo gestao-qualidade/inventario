@@ -25,6 +25,7 @@ export default function Divergencias() {
   const { dados, erro, carregando, recarregar } = useCarregar<Lista>(() => rpc('diverg.listar'), []);
   const [fStatus, setFStatus] = useState('ABERTAS'); const [fInv, setFInv] = useState(''); const [fTipo, setFTipo] = useState(''); const [fCli, setFCli] = useState(''); const [busca, setBusca] = useState('');
   const [pag, setPag] = useState(0); const [aberto, setAberto] = useState<Item | null>(null);
+  const adm = user.perfil === 'ADMINISTRADOR'; const [sel, setSel] = useState<Set<string>>(new Set()); const [msgAdm, setMsgAdm] = useState('');
   useEffect(() => { const q = new URLSearchParams(location.search).get('inv'); if (q) setFInv(q); }, []);
   useEffect(() => { setPag(0); }, [fStatus, fInv, fTipo, fCli, busca]);
 
@@ -34,6 +35,20 @@ export default function Divergencias() {
   const filtrados = useMemo(() => itens.filter(i =>
     (fStatus === 'TODOS' || (fStatus === 'ABERTAS' ? ABERTAS.includes(i.status) : i.status === fStatus)) && (!fInv || i.invId === fInv) && (!fTipo || i.tipo === fTipo) && (!fCli || i.cliente === fCli) &&
     (!busca.trim() || (i.sku + ' ' + i.posicao).toUpperCase().includes(busca.trim().toUpperCase()))), [itens, fStatus, fInv, fTipo, fCli, busca]);
+
+  const chave = (i: Item) => i.origem + '|' + i.id;
+  const excluirLista = async (lista: Item[]) => {
+    if (!lista.length) return;
+    const t = prompt(`ATENÇÃO: excluir ${lista.length} registro(s) de divergência/inclusão. Isso NÃO pode ser desfeito.\nDigite EXCLUIR para confirmar:`);
+    if (t === null) return;
+    try {
+      for (const [origem, tabela] of [['DIVERGENCIA', 'DIVERGENCIAS'], ['INCLUSAO', 'INCLUSOES']]) {
+        const ids = lista.filter(i => i.origem === origem).map(i => i.id);
+        if (ids.length) await rpc('admin.excluirRegistros', { tabela, ids, confirmar: t });
+      }
+      setSel(new Set()); setMsgAdm(`${lista.length} registro(s) excluído(s).`); recarregar();
+    } catch (e) { setMsgAdm(msgErro(e)); }
+  };
 
   const hoje = new Date().toLocaleDateString('pt-BR');
   const cont = (s: string) => itens.filter(i => i.status === s).length;
@@ -75,10 +90,14 @@ export default function Divergencias() {
           <div><div className="text-[11px] font-bold uppercase text-slate-500">Código ou posição</div><input className="input !w-52" placeholder="ex.: HYPMMK0120 ou A.01.1" value={busca} onChange={e => setBusca(e.target.value)} /></div>
           <div className="ml-auto text-sm text-slate-500">{fmt(total)} resultado(s)</div>
         </div>
-        <div className="overflow-x-auto"><table className="w-full"><thead><tr><th className="th">Status</th><th className="th">Tipo</th><th className="th">Produto</th><th className="th">Posição</th><th className="th text-right">Sistema</th><th className="th text-right">Contado</th><th className="th text-right">Dif.</th><th className="th text-right">Valor</th><th className="th">Ação sugerida</th><th className="th">Decisão / responsável</th><th className="th" /></tr></thead><tbody>
+        {adm && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-red-50 p-3 text-sm ring-1 ring-red-200"><span className="font-bold text-red-800">Administrador:</span>
+          <button className="btn btn-secondary" disabled={!sel.size} onClick={() => excluirLista(itens.filter(i => sel.has(chave(i))))}>Excluir selecionados ({sel.size})</button>
+          <button className="btn btn-secondary" disabled={!filtrados.length} onClick={() => excluirLista(filtrados)}>Excluir todos os {fmt(filtrados.length)} do filtro atual</button>
+          {msgAdm && <span className="text-red-800">{msgAdm}</span>}</div>}
+        <div className="overflow-x-auto"><table className="w-full"><thead><tr>{adm && <th className="th w-8"><input type="checkbox" aria-label="Selecionar página" checked={vis.length > 0 && vis.every(i => sel.has(chave(i)))} onChange={e => setSel(s => { const n = new Set(s); vis.forEach(i => e.target.checked ? n.add(chave(i)) : n.delete(chave(i))); return n; })} /></th>}<th className="th">Status</th><th className="th">Tipo</th><th className="th">Produto</th><th className="th">Posição</th><th className="th text-right">Sistema</th><th className="th text-right">Contado</th><th className="th text-right">Dif.</th><th className="th text-right">Valor</th><th className="th">Ação sugerida</th><th className="th">Decisão / responsável</th><th className="th" /></tr></thead><tbody>
           {vis.map(i => (
             <tr key={i.origem + i.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setAberto(i)}>
-              <td className="td"><span className={`badge ${STATUS[i.status]?.cor || ''}`}>{STATUS[i.status]?.rotulo || i.status}</span></td>
+              {adm && <td className="td" onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(chave(i))} onChange={e => setSel(s => { const n = new Set(s); e.target.checked ? n.add(chave(i)) : n.delete(chave(i)); return n; })} /></td>}<td className="td"><span className={`badge ${STATUS[i.status]?.cor || ''}`}>{STATUS[i.status]?.rotulo || i.status}</span></td>
               <td className="td font-semibold">{TIPO[i.tipo] || i.tipo}</td>
               <td className="td"><div className="flex items-center gap-2"><ProdutoFoto sku={i.sku} className="h-9 w-9" /><div><div className="font-semibold">{i.sku}</div><div className="text-xs text-slate-500">{i.descricao ? i.descricao + ' · ' : ''}{i.cliente} · {i.inventario}</div><div className="mt-1"><Lotes lotes={i.lotes} vazio={false} /></div></div></div></td>
               <td className="td">{i.posicao}</td><td className="td text-right">{i.saldo === '' ? '—' : fmt(i.saldo)}</td><td className="td text-right">{i.final === '' ? '—' : fmt(i.final)}</td>
@@ -86,7 +105,7 @@ export default function Divergencias() {
               <td className="td text-right">{brl(i.valor)}</td><td className="td max-w-[14rem] text-xs text-slate-600">{i.acao || '—'}</td>
               <td className="td text-xs">{i.decisao ? <><div className="font-semibold">{dados.decisoes.find(d => d.id === i.decisao)?.rotulo}</div><div className="text-slate-500">{i.responsavel}{i.prazo ? ` · até ${dtBR(i.prazo)}` : ''}</div></> : '—'}</td>
               <td className="td text-right"><button className="text-xs font-semibold text-brand-600 underline">Abrir</button></td></tr>))}
-          {!vis.length && <tr><td className="td text-slate-500" colSpan={11}>Nenhuma divergência com esses filtros. 🎉</td></tr>}
+          {!vis.length && <tr><td className="td text-slate-500" colSpan={12}>Nenhuma divergência com esses filtros. 🎉</td></tr>}
         </tbody></table></div>
         {pags > 1 && <div className="flex items-center justify-end gap-2 text-sm"><button className="btn btn-secondary" disabled={pag === 0} onClick={() => setPag(pag - 1)}>← Anterior</button><span>Página {pag + 1} de {pags}</span><button className="btn btn-secondary" disabled={pag >= pags - 1} onClick={() => setPag(pag + 1)}>Próxima →</button></div>}
       </div>

@@ -145,7 +145,8 @@ export default function Importacao() {
             <tr key={h.ID}><td className="td">{h.ID}</td><td className="td">{h.DATA} {h.HORA}</td><td className="td">{h.ANALISTA_NOME}</td><td className="td">{h.NOVA_VERSAO}</td>
               <td className="td text-right">{fmt(h.REG_ARM || 0)} / {fmt(h.REG_CF || 0)} / {fmt(h.REG_BASE || 0)}</td><td className="td">{h.STATUS}</td>
               <td className="td text-right">{user.perfil === 'ADMINISTRADOR' && h.STATUS === 'SUBSTITUIDA' && <button className="text-xs font-semibold text-brand-600 underline" disabled={ocupado}
-                onClick={() => confirm(`Restaurar a versão ${h.NOVA_VERSAO}? Ela voltará a ser a base ativa dos novos inventários.`) && acao(() => rpc('importacao.restaurar', { importId: h.ID }), 'Versão restaurada.')}>Restaurar</button>}</td></tr>
+                onClick={() => confirm(`Restaurar a versão ${h.NOVA_VERSAO}? Ela voltará a ser a base ativa dos novos inventários.`) && acao(() => rpc('importacao.restaurar', { importId: h.ID }), 'Versão restaurada.')}>Restaurar</button>}
+                {user.perfil === 'ADMINISTRADOR' && h.NOVA_VERSAO && !['PUBLICADA', 'RECEBENDO'].includes(h.STATUS) && <button className="ml-3 text-xs font-semibold text-red-600 underline" disabled={ocupado} onClick={() => { const t = prompt(`ATENÇÃO: apagar os dados da versão ${h.NOVA_VERSAO} (não pode ser desfeito; ela não poderá mais ser restaurada).\nDigite EXCLUIR para confirmar:`); if (t !== null) acao(() => rpc('importacao.excluirVersao', { importId: h.ID, confirmar: t }), 'Dados da versão excluídos.'); }}>Excluir dados</button>}</td></tr>
           ))}
           {!est.historico.length && <tr><td className="td text-slate-500" colSpan={7}>Nenhuma importação ainda.</td></tr>}
         </tbody></table></div>

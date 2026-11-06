@@ -49,6 +49,7 @@ export default function Regras() {
   const { dados, erro, carregando, recarregar } = useCarregar<any[]>(() => rpc('regras.listar'), []);
   const invs = useCarregar<any[]>(() => (admin ? rpc('inventario.listar') : Promise.resolve([])), []);
   const [edit, setEdit] = useState<any>(undefined); const [hist, setHist] = useState<any[] | null>(null); const [msg, setMsg] = useState(''); const [filtro, setFiltro] = useState('');
+  const excluir = async (r: any) => { const t = prompt(`ATENÇÃO: excluir esta regra (${r.ACAO}) e o histórico dela não pode ser desfeito.\nDigite EXCLUIR para confirmar:`); if (t === null) return; try { await rpc('regras.excluir', { id: r.ID, confirmar: t }); setMsg('Regra excluída.'); recarregar(); } catch (e) { setMsg(msgErro(e)); } };
   const alternar = async (r: any) => { try { await rpc('regras.ativar', { id: r.ID, ativa: r.ATIVA !== 'S' }); recarregar(); } catch (e) { setMsg(msgErro(e)); } };
   const historico = async (r: any) => { try { setHist(await rpc('regras.historico', { id: r.ID })); } catch (e) { setMsg(msgErro(e)); } };
   if (carregando) return <Carregando />;
@@ -63,7 +64,7 @@ export default function Regras() {
         <div className="overflow-x-auto"><table className="w-full"><thead><tr>{CAMPOS.map(([k, t]) => <th key={k} className="th">{t}</th>)}<th className="th">Ação</th><th className="th">Ver.</th><th className="th">Status</th><th className="th" /></tr></thead><tbody>
           {lista.map(r => <tr key={r.ID} className={r.ATIVA !== 'S' ? 'opacity-50' : ''}>{CAMPOS.map(([k]) => <td key={k} className="td">{SN(r[k])}</td>)}<td className="td font-medium">{r.ACAO}</td><td className="td">{r.VERSAO}</td><td className="td">{r.ATIVA === 'S' ? 'Ativa' : 'Inativa'}</td>
             <td className="td whitespace-nowrap text-right text-xs font-semibold text-brand-600"><button className="mr-3 underline" onClick={() => historico(r)}>Versões</button>
-              {admin && <><button className="mr-3 underline" onClick={() => setEdit(r)}>Editar</button><button className="underline" onClick={() => alternar(r)}>{r.ATIVA === 'S' ? 'Desativar' : 'Ativar'}</button></>}</td></tr>)}
+              {admin && <><button className="mr-3 underline" onClick={() => setEdit(r)}>Editar</button><button className="underline" onClick={() => alternar(r)}>{r.ATIVA === 'S' ? 'Desativar' : 'Ativar'}</button><button className="ml-3 text-red-600 underline" onClick={() => excluir(r)}>Excluir</button></>}</td></tr>)}
         </tbody></table></div></div>
       {edit !== undefined && <Formulario regra={edit} invs={invs.dados || []} onClose={() => setEdit(undefined)} onSalvo={recarregar} />}
       {hist && <Modal titulo="Versões da regra" onClose={() => setHist(null)} largo><table className="w-full"><thead><tr><th className="th">Versão</th><th className="th">Quando</th><th className="th">Quem</th><th className="th">Motivo</th></tr></thead><tbody>
