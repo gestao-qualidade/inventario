@@ -13,6 +13,7 @@ const CORES = ['#b5834a', '#2f6bff', '#22a35a', '#f5c400', '#e63946', '#cbd5e1']
 const PAPELAO = ['#b5834a', '#a8763f', '#c2925c', '#9c6f3a'];
 const COL_SPACING = 1.35, LEVEL_HEIGHT = 1.9, RACK_DEPTH = 1.15, AISLE_WIDTH = 3.4, CORRIDOR_GAP = 2.6;
 const BASE_Y = 0.15, BEAM = 0.08, POST = 0.12, PALLET_H = 0.16, COLUMN_TAG_STEP = 5;
+const COL_MAX = 73, ALT_MAX = 6; // mapa principal: até a coluna 73 e o nível 6; o restante fica no grupo "fora do padrão"
 const LIMITE = 15000; // máximo de posições desenhadas de uma vez (mantém o 3D leve)
 
 type P = { id: string; gal: string; st: number; rua: string; col: number; alt: number };
@@ -35,7 +36,7 @@ export default function Mapa3D() {
   const [inv, setInv] = useState('');
   const invs = useCarregar<any[]>(() => rpc('inventario.listar'), []);
   const { dados, erro, carregando, recarregar } = useCarregar<Dados>(() => rpc('mapa.dados', inv ? { invId: inv } : {}), [inv]);
-  const [visao, setVisao] = useState<'estante' | 'galpao'>('estante');
+  const [visao, setVisao] = useState<'estante' | 'galpao'>('estante'); const [grupo, setGrupo] = useState<'padrao' | 'fora'>('padrao');
   const [oculto, setOculto] = useState<Set<number>>(new Set());
   const [galpao, setGalpao] = useState(''); const [busca, setBusca] = useState(''); const [filtroRua, setFiltroRua] = useState('');
   const [sel, setSel] = useState<string[]>([]);
@@ -46,10 +47,13 @@ export default function Mapa3D() {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<{ reset?: () => void; topo?: () => void; ir?: (id: string) => void }>({});
 
-  const itens = useMemo(() => {
+  const todos = useMemo(() => {
     const nomes: string[] = Array.isArray(dados?.galpoes) ? dados!.galpoes : [];
     return (Array.isArray(dados?.posicoes) ? dados!.posicoes : []).map(([id, g, st]: any) => parse(String(id), typeof g === 'number' ? (nomes[g] ?? '') : String(g ?? ''), Number(st) || 0));
   }, [dados]);
+  const dentro = (p: P) => p.col <= COL_MAX && p.alt <= ALT_MAX;
+  const nFora = useMemo(() => todos.filter(p => !dentro(p) && p.st !== 5).length, [todos]);
+  const itens = useMemo(() => todos.filter(p => (grupo === 'padrao') === dentro(p)), [todos, grupo]);
   const galpoes = useMemo(() => [...new Set(itens.filter(i => i.st !== 5).map(i => i.gal))].sort(cmpNat), [itens]);
   useEffect(() => { if (galpoes.length && !galpoes.includes(galpao)) setGalpao(galpoes[0]); }, [galpoes, galpao]);
   useEffect(() => { setOculto(inv ? new Set([5]) : new Set()); }, [inv]);
@@ -65,7 +69,7 @@ export default function Mapa3D() {
   const maxAltGal = useMemo(() => Math.max(1, ...ruas.map(r => r.maxAlt)), [ruas]);
 
   // ao trocar de galpão, já seleciona as primeiras ruas (visão leve e útil de imediato)
-  useEffect(() => { setSel(ruas.slice(0, 3).map(r => r.rua)); setCDe(''); setCAte(''); setAlts(new Set()); setFiltroRua(''); }, [galpao]); // eslint-disable-line
+  useEffect(() => { setSel(ruas.slice(0, 3).map(r => r.rua)); setCDe(''); setCAte(''); setAlts(new Set()); setFiltroRua(''); }, [galpao, grupo]); // eslint-disable-line
 
   const ruasSel = useMemo(() => ruas.map(r => r.rua).filter(r => sel.includes(r)), [ruas, sel]);
   const lo = Math.max(1, parseInt(cDe) || 1), hi = parseInt(cAte) || 1e9;
@@ -245,6 +249,7 @@ export default function Mapa3D() {
         </div>
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <div><div className="text-[11px] font-bold uppercase text-slate-500">Galpão</div>
+            <div className="mr-3 inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">{([['padrao', `Mapa principal (até col. ${COL_MAX} · nível ${ALT_MAX})`], ['fora', `Fora do padrão (${nFora.toLocaleString('pt-BR')})`]] as const).map(([k, t]) => <button key={k} type="button" onClick={() => setGrupo(k)} className={`px-3 py-1.5 text-xs font-semibold ${grupo === k ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>{t}</button>)}</div>
             <select className="input !w-auto" value={galpao} onChange={e => setGalpao(e.target.value)}>{galpoes.map(g => <option key={g}>{g}</option>)}</select></div>
           <div><div className="text-[11px] font-bold uppercase text-slate-500">Visão</div>
             <div className="inline-flex rounded-xl bg-slate-100 p-1">{([['estante', 'Estantes (detalhe)'], ['galpao', 'Galpão inteiro']] as const).map(([m, t]) => <button key={m} onClick={() => setVisao(m)} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${visao === m ? 'bg-white text-blue-700 shadow' : 'text-slate-500'}`}>{t}</button>)}</div></div>
