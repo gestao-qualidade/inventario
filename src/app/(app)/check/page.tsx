@@ -13,6 +13,7 @@ export default function Check() {
   const [incl, setIncl] = useState<{ sku: string; qtd: string; lote: string; validade: string }[]>([]); const [erro, setErro] = useState(''); const [ok, setOk] = useState(''); const [env, setEnv] = useState(false);
   const [modo, setModo] = useState('CONTAGEM'); const presenca = modo === 'PRESENCA';
   const [alvo, setAlvo] = useState(''); const [filtro, setFiltro] = useState('');
+  const [origem, setOrigem] = useState<{ fonte: string; hora?: string; aviso?: string; galpao?: string }>({ fonte: '' });
   const lista = useCarregar<{ posicoes: { posicao: string; itens: number }[]; pendentes: number; total: number; feitas: number }>(
     () => (invId ? rpc('check.posicoes', { invId }) : Promise.resolve({ posicoes: [], pendentes: 0, total: 0, feitas: 0 })), [invId, itens === null], 15000);
   useEffect(() => { if (invs.dados?.length === 1 && !invId) setInvId(invs.dados[0].id); }, [invs.dados, invId]);
@@ -20,7 +21,7 @@ export default function Check() {
 
   const abrir = async (e: React.FormEvent) => {
     e.preventDefault(); setErro(''); setOk(''); setEnv(true);
-    try { const r = await rpc<{ posicao: string; modo: string; itens: Omit<Item, 'encontrado' | 'qtd'>[] }>('check.esperados', { invId, posicao: alvo || posicao, leitura: posicao }); setPosicao(r.posicao); setAlvo(''); setModo(r.modo); setItens(r.itens.map(i => ({ ...i, encontrado: false, qtd: '' }))); setIncl([]); }
+    try { const r = await rpc<{ posicao: string; modo: string; fonte: string; horaSil?: string; aviso?: string; galpao?: string; itens: Omit<Item, 'encontrado' | 'qtd'>[] }>('check.esperados', { invId, posicao: alvo || posicao, leitura: posicao }); setPosicao(r.posicao); setAlvo(''); setModo(r.modo); setOrigem({ fonte: r.fonte, hora: r.horaSil, aviso: r.aviso, galpao: r.galpao }); setItens(r.itens.map(i => ({ ...i, encontrado: false, qtd: '' }))); setIncl([]); }
     catch (x) { setErro(msgErro(x)); } finally { setEnv(false); }
   };
   const registrar = async () => {
@@ -59,7 +60,10 @@ export default function Check() {
         </div>}
       </>) : (
         <div className="space-y-3">
-          <div className="card"><div className="label !mb-0">Posição {presenca && '· só presença (sem quantidade)'}</div><div className="text-3xl font-extrabold text-brand-700">{posicao}</div></div>
+          <div className="card"><div className="label !mb-0">Posição {presenca && '· só presença (sem quantidade)'}</div><div className="text-3xl font-extrabold text-brand-700">{posicao}</div>
+            {origem.fonte === 'SIL' && <div className="mt-1 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">● Ao vivo do SIL às {origem.hora}{origem.galpao ? ` · ${origem.galpao}` : ''}</div>}
+            {origem.aviso && <div className="mt-2"><Alerta tipo="info">{origem.aviso}</Alerta></div>}
+            {origem.fonte === 'SIL' && itens.length === 0 && <div className="mt-2"><Alerta tipo="info">O SIL mostra esta posição vazia. Se achar algo, use "Produtos que não pertencem à posição".</Alerta></div>}</div>
           {itens.map((it, n) => (
             <div key={it.sku} className="card space-y-2"><div className="flex items-start justify-between gap-3"><div className="flex items-start gap-3"><ProdutoFoto sku={it.sku} className="h-20 w-20" /><div><div className="font-bold">{it.sku}</div><div className="text-xs text-slate-500">{it.descricao} · {it.cliente}{it.codigoBarras ? ` · cód. ${it.codigoBarras}` : ''}</div><div className="mt-1"><Lotes lotes={it.lotes} grande /></div></div></div>
               <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" className="h-5 w-5" checked={it.encontrado} onChange={e => setItens(itens.map((x, j) => j === n ? { ...x, encontrado: e.target.checked } : x))} />Encontrado</label></div>
