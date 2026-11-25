@@ -6,7 +6,7 @@ import ProdutoFoto from './ProdutoFoto';
 import Lotes, { mascaraData } from './Lotes';
 
 type Pos = { posicao: string; unidades: number; minha: boolean };
-type Tarefa = { tarefaId: string; posicao: string; pendentes: number };
+type Tarefa = { tarefaId: string; posicao: string; pendentes: number; fonte?: string; horaSil?: string; aviso?: string };
 
 function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair: () => void }) {
   const [sku, setSku] = useState(''); const [qtd, setQtd] = useState(''); const [ocupado, setOcupado] = useState(false);
@@ -41,7 +41,7 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <div className="card flex items-center justify-between"><div><div className="label !mb-0">Posição</div><div className="grad-text text-4xl font-extrabold">{tarefa.posicao}</div></div>
+      <div className="card flex items-center justify-between"><div><div className="label !mb-0">Posição</div><div className="grad-text text-4xl font-extrabold">{tarefa.posicao}</div>{tarefa.fonte === 'SIL' && <div className="mt-1 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">● Saldo ao vivo do SIL às {tarefa.horaSil}</div>}{tarefa.aviso && <div className="mt-1 text-xs font-semibold text-amber-700">{tarefa.aviso}</div>}</div>
         <div className="text-right"><div className="label !mb-0">Itens a lançar</div><div className="text-3xl font-extrabold">{restantes}</div></div></div>
       <div className="card space-y-4">
         <div><label className="label" htmlFor="sku">SKU (bipe o código)</label>
@@ -54,6 +54,7 @@ function Tela({ invId, tarefa, onSair }: { invId: string; tarefa: Tarefa; onSair
               {prod.cliente && <div className="text-xs text-slate-500">Cliente {prod.cliente}{prod.codigoBarras ? ` · cód. ${prod.codigoBarras}` : ''}</div>}
               <Lotes lotes={prod.lotes} grande />
               {!prod.pertence && <div className="font-bold text-amber-800">Produto não cadastrado nesta posição. Inclusão identificada.</div>}
+              {prod.sil && (prod.sil.existe ? <div className="text-xs font-bold text-emerald-700">● SKU confirmado no SIL às {prod.sil.hora}</div> : <div className="text-xs font-bold text-red-700">⚠ SKU não encontrado no SIL. Confira o código digitado.</div>)}
             </div>
           </div>
         )}
